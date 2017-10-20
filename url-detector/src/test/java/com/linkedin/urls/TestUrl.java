@@ -30,7 +30,8 @@ public class TestUrl {
         {"nono:boo@[::1]", "[::1]", "/", "nono", "boo"},
         {"nono:boo@yahoo.com/@1234", "yahoo.com", "/@1234", "nono", "boo"},
         {"fname.lname@blah.com", "blah.com", "/", "fname.lname", ""},
-        {"fname.middle.lname@blah.com", "blah.com", "/", "fname.middle.lname", ""}
+        {"fname.middle.lname@blah.com", "blah.com", "/", "fname.middle.lname", ""},
+        {"aaaaaaabcde=first.last@blah.com", "blah.com", "/", "aaaaaaabcde=first.last", ""}
     };
   }
 

@@ -648,10 +648,37 @@ public class TestUriDetection {
   public void testBacktrackInvalidUsernamePassword() {
     runTest("http://hello:asdf.com", UrlDetectorOptions.Default, "asdf.com");
   }
+  
+  @Test
+  public void testEmailsWithDotInUsername() {
+    runTest("fname.middle.lname@blah.com", UrlDetectorOptions.Default, "fname.middle.lname@blah.com");
+    runTest("desert_hills_dental_care.sr@e.smilereminder.com", UrlDetectorOptions.Default, "desert_hills_dental_care.sr@e.smilereminder.com");
+    runTest("aaaaaaabcde=first.last@blah.com", UrlDetectorOptions.Default, "aaaaaaabcde=first.last@blah.com");
+  }
+  
+  @Test
+  public void testUnderscoreInDomainOption() {
+    UrlDetectorOptionsExtended extendedOptions = UrlDetectorOptionsExtended.builder()
+            .setAllowUnderscoresInDomain()
+            .build();
+    runTest("naughty underscores. https://javascript_library.s3.amazonaws.com/bard/ic-twitter.png", UrlDetectorOptions.Default, extendedOptions, "https://javascript_library.s3.amazonaws.com/bard/ic-twitter.png");
+  }
 
   private void runTest(String text, UrlDetectorOptions options, String... expected) {
     //do the detection
     UrlDetector parser = new UrlDetector(text, options);
+    List<Url> found = parser.detect();
+    String[] foundArray = new String[found.size()];
+    for (int i = 0; i < foundArray.length; i++) {
+      foundArray[i] = found.get(i).getOriginalUrl();
+    }
+
+    Assert.assertEqualsNoOrder(foundArray, expected);
+  }
+  
+  private void runTest(String text, UrlDetectorOptions options, UrlDetectorOptionsExtended extendedOptions, String... expected) {
+    //do the detection
+    UrlDetector parser = new UrlDetector(text, options, extendedOptions);
     List<Url> found = parser.detect();
     String[] foundArray = new String[found.size()];
     for (int i = 0; i < foundArray.length; i++) {

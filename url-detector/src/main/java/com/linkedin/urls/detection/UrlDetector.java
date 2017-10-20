@@ -57,6 +57,12 @@ public class UrlDetector {
   private final UrlDetectorOptions _options;
 
   /**
+   * Extended options. More options that need to be available, regardless
+   * of the single UrlDetectorOptions that have been chosen.
+   */
+  private UrlDetectorOptionsExtended _extendedOptions;
+  
+  /**
    * The input stream to read.
    */
   private final InputTextReader _reader;
@@ -100,7 +106,7 @@ public class UrlDetector {
    * Keeps track of certain indices to create a Url object.
    */
   private UrlMarker _currentUrlMarker = new UrlMarker();
-
+  
   /**
    * The states to use to continue writing or not.
    */
@@ -121,8 +127,19 @@ public class UrlDetector {
    * @param options The UrlDetectorOptions to use when detecting the content.
    */
   public UrlDetector(String content, UrlDetectorOptions options) {
+    this(content, options, UrlDetectorOptionsExtended.getDefault());
+  }
+  
+  /**
+   * Creates a new UrlDetector object used to find urls inside of text.
+   * @param content The content to search inside of.
+   * @param options The UrlDetectorOptions to use when detecting the content.
+   * @param extendedOptions Extended options to use while detecting
+   */
+  public UrlDetector(String content, UrlDetectorOptions options, UrlDetectorOptionsExtended extendedOptions) {
     _reader = new InputTextReader(content);
     _options = options;
+    _extendedOptions = extendedOptions;
   }
 
   /**
@@ -527,15 +544,16 @@ public class UrlDetector {
     //create the domain name reader and specify the handler that will be called when a quote character
     //or something is found.
     DomainNameReader reader =
-        new DomainNameReader(_reader, _buffer, current, _options, new DomainNameReader.CharacterHandler() {
+        new DomainNameReader(_reader, _buffer, current, _options, _extendedOptions, new DomainNameReader.CharacterHandler() {
           @Override
           public void addCharacter(char character) {
             checkMatchingCharacter(character);
           }
         });
 
-    //The start of where we are.
-    int startBufferLen = _buffer.length();
+    // Save the current state, so we can rollback if necessary
+    int savedPosition = _reader.getPosition();
+    StringBuilder savedBuffer = new StringBuilder(_buffer);
     
     //Try to read the dns and act on the response.
     DomainNameReader.ReaderNextState state = reader.readDomainName();
@@ -553,12 +571,8 @@ public class UrlDetector {
       case ReadUserPass:
         // found an '@' while trying to read a domain name. rollback, and try to read user/pass
         _currentUrlMarker.unsetIndex(UrlPart.HOST);
-        int distance = _buffer.length() - startBufferLen;
-        _buffer.delete(startBufferLen, _buffer.length());
-        
-        int currIndex = Math.max(_reader.getPosition() - distance, 0);
-        _reader.seek(currIndex);
-        
+        _buffer = savedBuffer;
+        _reader.seek(savedPosition);
         return readUserPass(hostIndex);
       default:
         return readEnd(ReadEndState.InvalidUrl);

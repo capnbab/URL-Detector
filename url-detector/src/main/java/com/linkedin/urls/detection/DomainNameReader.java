@@ -138,6 +138,12 @@ public class DomainNameReader {
   private UrlDetectorOptions _options;
 
   /**
+   * Extended options. More options that need to be available, regardless
+   * of the single UrlDetectorOptions that have been chosen.
+   */
+  private UrlDetectorOptionsExtended _extendedOptions;
+  
+  /**
    * Keeps track the number of dots that were found in the domain name.
    */
   private int _dots = 0;
@@ -194,14 +200,16 @@ public class DomainNameReader {
    * @param buffer The string buffer to use for storing a domain name.
    * @param current The current string that was thought to be a domain name.
    * @param options The detector options of this reader.
+   * @param extendedOptions The detector extended options of this reader.
    * @param characterHandler The handler to call on each non-matching character to count matching quotes and stuff.
    */
   public DomainNameReader(InputTextReader reader, StringBuilder buffer, String current, UrlDetectorOptions options,
-      CharacterHandler characterHandler) {
+      UrlDetectorOptionsExtended extendedOptions, CharacterHandler characterHandler) {
     _buffer = buffer;
     _current = current;
     _reader = reader;
     _options = options;
+    _extendedOptions = extendedOptions;
     _characterHandler = characterHandler;
   }
 
@@ -272,6 +280,9 @@ public class DomainNameReader {
             index--; //backtrack to rerun last character knowing it isn't hex.
           }
         } else if (CharUtils.isAlpha(curr) || curr == '-' || curr >= INTERNATIONAL_CHAR_START) {
+          _numeric = false;
+        } else if (curr == '_' && _extendedOptions.isUnderscoreAllowedInDomain()) {
+          // found an _ and we have elected to include those as part of a valid domain name
           _numeric = false;
         } else if (!CharUtils.isNumeric(curr) && !_options.hasFlag(UrlDetectorOptions.ALLOW_SINGLE_LEVEL_DOMAIN)) {
           //if its not _numeric and not alphabetical, then restart searching for a domain from this point.
@@ -396,8 +407,10 @@ public class DomainNameReader {
         }
         _numeric = false;
         _buffer.append(curr);
-      } else if (CharUtils.isAlphaNumeric(curr) || curr == '-' || curr >= INTERNATIONAL_CHAR_START) {
-        //Valid domain name character. Either a-z, A-Z, 0-9, -, or international character
+      } else if (CharUtils.isAlphaNumeric(curr) || curr == '-' || curr >= INTERNATIONAL_CHAR_START
+              || (curr == '_' && _extendedOptions.isUnderscoreAllowedInDomain())) {
+        //Valid domain name character. Either a-z, A-Z, 0-9, -, or international character, or
+        // underscore, and we have elected to include _ as a valid domain name character.
         if (_seenCompleteBracketSet) {
           //covers case of [fe80::]www.google.com
           _reader.goBack();
